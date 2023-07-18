@@ -1,0 +1,5 @@
+data/
+scripts/data/fluxes
+scripts/TBoard
+scripts/wandb
+scripts/NEMO-EDA.ipynb
