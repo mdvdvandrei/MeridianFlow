@@ -3,3 +3,6 @@ scripts/data/fluxes
 scripts/TBoard
 scripts/wandb
 scripts/NEMO-EDA.ipynb
+scripts/__pycache__
+scripts/.ipynb_checkpoints
+scripts/models/__pycache__
