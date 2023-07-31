@@ -61,6 +61,23 @@ def convnext_small():
     replace_activations(model, nn.ReLU, nn.GELU)
     return model
 
+
+def shufflenet_small():
+    model = models.shufflenet_v2_x1_0(pretrained=False)
+    if model is None:
+        print("Failed to create model")
+        return None
+
+    model.conv1[0] = nn.Conv2d(18, 24, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+    model.fc = nn.Linear(in_features=model.fc.in_features, out_features=1)
+    
+    if model is None:
+        print("Failed to modify model")
+        return None
+
+    return model
+
+
 class LinearRegressionModel(nn.Module):
     def __init__(self):
         super(LinearRegressionModel, self).__init__()
