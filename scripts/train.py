@@ -41,7 +41,7 @@ def find_directories(path, pattern, maxdepth):
 
 tb_period = 8
 
-run_prefix = 'shufflenet_small'
+run_prefix = 'resnext50_32x4d'
 
 existing_logs_directories = [d for d in find_directories('./logs', '%s_run*' % run_prefix, maxdepth=2)]
 
@@ -141,7 +141,7 @@ def threaded_cuda_batches(tokill, cuda_batches_queue, batches_queue):
             return
 
 
-batch_size = 16
+batch_size = 8
 dataset_train = MyDataset(
     root_dir='/storage/kubrick/amedvedev/data/NNATL-12/NNATL12-MP423c-S/1d',
     batch_size=batch_size, val_mark=False)
@@ -323,6 +323,8 @@ def train_model(model: torch.nn.Module,
             best_epoch = epoch
             torch.save(model.module.state_dict(), os.path.join(curr_run_dir, 'best_model.pt'))
 
+        torch.save(model.module.state_dict(), os.path.join(curr_run_dir, 'model_ep%04d.pt' % epoch))
+
     # Stopping datapreprocessing threads
     test_thread_killer.set_tokill(True)
     train_thread_killer.set_tokill(True)
@@ -340,7 +342,7 @@ def train_model(model: torch.nn.Module,
 
 
 
-model = shufflenet_small()
+model = resnext50_32x4d()
 
 for param in model.parameters():
     param.requires_grad = True
@@ -353,7 +355,7 @@ wandb.watch(model, log="all")
 train_model(model,
             train_dataset=dataset_train,
             val_dataset=dataset_test,
-            max_epochs=20)
+            max_epochs=200)
 
 wandb.finish()
 
