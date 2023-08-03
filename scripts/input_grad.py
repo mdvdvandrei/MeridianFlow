@@ -5,7 +5,13 @@ import os
 import numpy as np
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-from tqdm import tqdm  # Import tqdm for the progress bar
+from tqdm import tqdm  
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+import numpy as np
+from netCDF4 import Dataset
+
+
 
 # Check if GPU is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -87,16 +93,62 @@ reshaped_gradients = abs(average_gradients.cpu().numpy().reshape((18, 402, 934))
 # Normalize the image
 normalized_gradients = (reshaped_gradients - reshaped_gradients.min()) / (reshaped_gradients.max() - reshaped_gradients.min())
 
-# Plot and save the image
-for channel in range(18):
-    plt.imshow(normalized_gradients[channel])
-    print(normalized_gradients.min(), normalized_gradients.max())
-    plt.axis('off')  # Optional: Turn off axis
-    plt.savefig(f'//app/amedvedev/scripts/data/graphs/gradients_image_normalized_{channel}.png', bbox_inches='tight', pad_inches=0)  # Save the image
+with Dataset('/storage/kubrick/amedvedev/data/NNATL-12/coordinates.nc', 'r') as ds:
+    lons = ds.variables['nav_lon'][:]
+    lats = ds.variables['nav_lat'][:]
+
+def visualize_data(input_array, lats, lons, output_path, reshaped_gradients):
+    """Visualize and save input data using Basemap.
+
+    Parameters:
+    input_array (numpy.array): Input data array with shape (channels, height, width).
+    lats (numpy.array): 2D array of latitudes with shape (height, width).
+    lons (numpy.array): 2D array of longitudes with shape (height, width).
+    output_path (str): Path to save the output images.
+    """
+    # Create a map
+    m = Basemap(width=10_000_000,height=4_000_000,
+                resolution='l',projection='eqdc',
+                lat_1=40., lat_2=65,
+                lat_0 = 60, lon_0=-30.)
+
+    # Plot each channel
+    for channel in range(input_array.shape[0]):
+        fig, ax = plt.subplots(figsize=(10, 8), dpi = 200)
+        
+        m.drawcoastlines()
+        
+        # Convert the latitudes and longitudes to x and y coordinates
+        x, y = m(lons, lats)
+        
+        # Get the data for the current channel
+        data = input_array[channel]
+        
+        c = m.contourf(x, y, data)
+        plt.colorbar(c)  # Optional: Add a color bar
+
+        plt.savefig(f'{output_path}/gradients_image_normalized_{channel}.png', bbox_inches='tight', pad_inches=0)  # Save the image
+        plt.close()  # Close the figure to free up memory
+
+    all_grads = (np.sum(reshaped_gradients, axis = 0 ) - np.sum(reshaped_gradients, axis = 0 ).min()) / (np.sum(reshaped_gradients, axis = 0 ).max() - np.sum(reshaped_gradients, axis = 0 ).min())
+
+    fig, ax = plt.subplots(figsize=(10, 8), dpi = 200)
+        
+    m.drawcoastlines()
+    
+    # Convert the latitudes and longitudes to x and y coordinates
+    x, y = m(lons, lats)
+    
+    # Get the data for the current channel
+    data = all_grads
+    
+    c = m.contourf(x, y, data)
+    plt.colorbar(c)  # Optional: Add a color bar
+
+    plt.savefig(f'{output_path}/gradients_image_normalized_sum.png', bbox_inches='tight', pad_inches=0)  # Save the image
+    plt.close()  # Close the figure to free up memory
 
 
-all_grads = (np.sum(normalized_gradients, axis = 0 ) - np.sum(normalized_gradients, axis = 0 ).min()) / (np.sum(normalized_gradients, axis = 0 ).max() - np.sum(normalized_gradients, axis = 0 ).min())
 
-plt.imshow(all_grads)
-plt.axis('off')  # Optional: Turn off axis
-plt.savefig(f'//app/amedvedev/scripts/data/graphs/gradients_image_normalized_mean.png', bbox_inches='tight', pad_inches=0)  # Save the image
+# usage example
+visualize_data(normalized_gradients, lats, lons, '//app/amedvedev/scripts/data/graphs',reshaped_gradients)
