@@ -33,7 +33,7 @@ loss_fn = torch.nn.MSELoss()
 
 dataset_test = MyDataset(
     root_dir='/storage/kubrick/amedvedev/data/NNATL-12/NNATL12-MP423c-S/1d',
-    batch_size=1, val_mark=True)
+    batch_size=8, val_mark=True)
 
 mean = 8619244861.558443
 std = 4320463472.088931
@@ -66,53 +66,53 @@ for _ in range(len(dataset_test)):
     # Forward pass
     output = model(data)
 
-    #loss = loss_fn(output, y.view(-1, 1))
+    loss = loss_fn(output, y.view(-1, 1))
 
     # Backward pass
-    #model.zero_grad()  # Clear existing gradients
-    #loss.backward()
+    model.zero_grad()  # Clear existing gradients
+    loss.backward()
 
-    y_grads = torch.autograd.grad(outputs=output, 
-                                inputs=data, 
-                                grad_outputs=torch.ones(output.size()).to(device), 
-                                create_graph=True, 
-                                retain_graph=True)[0]
+    # Accumulate gradients with respect to the input
 
-    # Accumulate gradients with respect to the input for y
-    if total_y_gradients is None:
-        total_y_gradients = y_grads.clone().detach().sum(dim=0)
+    if total_gradients is None:
+        total_gradients = data.grad.clone().detach().sum(dim=0)
     else:
-        total_y_gradients += y_grads.clone().detach().sum(dim=0)
-
+        total_gradients += data.grad.clone().detach().sum(dim=0)
 
     pbar.update(1)  # manually update the progress bar
 
 # Close the progress bar
 pbar.close()
 
+# Average gradients
+average_gradients = total_gradients / len(dataset_test)
 
-# For y gradients
-average_y_gradients = total_y_gradients / len(dataset_test)
-reshaped_y_gradients = (average_y_gradients.cpu().numpy().reshape((18, 402, 934)))
-#normalized_y_gradients = (reshaped_y_gradients - reshaped_y_gradients.min()) / (reshaped_y_gradients.max() - reshaped_y_gradients.min())
-normalized_y_gradients = reshaped_y_gradients
+# Reshape gradients to the desired shape
+reshaped_gradients = (average_gradients.cpu().numpy().reshape((18, 402, 934)))
 
+# Normalize the image
+#normalized_gradients = (reshaped_gradients - reshaped_gradients.min()) / (reshaped_gradients.max() - reshaped_gradients.min())
+normalized_gradients = reshaped_gradients
 
 with Dataset('/storage/kubrick/amedvedev/data/NNATL-12/coordinates.nc', 'r') as ds:
     lons = ds.variables['nav_lon'][:]
     lats = ds.variables['nav_lat'][:]
 
 
-def visualize_data( input_y_array, lats, lons, output_path):
+def visualize_data(input_array, input_y_array, lats, lons, output_path):
     """
     Visualize and save input data and y gradients using Basemap.
 
     Parameters:
+    input_array (numpy.array): Input data array with shape (channels, height, width) representing gradients for the loss.
     input_y_array (numpy.array): Input data array with shape (channels, height, width) representing gradients for the target y.
     lats (numpy.array): 2D array of latitudes with shape (height, width).
     lons (numpy.array): 2D array of longitudes with shape (height, width).
     output_path (str): Path to save the output images.
     """
+    # ... [Rest of the code for visualizing input_array]
+
+    # Visualization for the y gradients
 
     m = Basemap(width=10_000_000,height=4_000_000,
             resolution='l',projection='eqdc',
@@ -146,11 +146,9 @@ def visualize_data( input_y_array, lats, lons, output_path):
 
 
     plt.tight_layout()
-    plt.savefig(f'{output_path}/y_gradients_combined.png', bbox_inches='tight', pad_inches=0.5)
+    plt.savefig(f'{output_path}/gradients_image_combined.png', bbox_inches='tight', pad_inches=0.5)
     plt.close()
 
-
-    # You can also add visualization for the summed y gradients like you did above
     #all_y_grads = (np.sum(reshaped_y_gradients, axis=0) - np.sum(reshaped_y_gradients, axis=0).min()) / (np.sum(reshaped_y_gradients, axis=0).max() - np.sum(reshaped_y_gradients, axis=0).min())
     
 
@@ -165,8 +163,8 @@ def visualize_data( input_y_array, lats, lons, output_path):
     
     c = m.contourf(x, y, data, cmap="RdBu_r")
     
-    plt.savefig(f'{output_path}/y_gradients_image_normalized_sum.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(f'{output_path}/gradients_image_normalized_sum.png', bbox_inches='tight', pad_inches=0)  # Save the image
     plt.close()
 
 # Usage example
-visualize_data(normalized_y_gradients, lats, lons, '//app/amedvedev/scripts/data/graphs')
+visualize_data(normalized_gradients, normalized_gradients, lats, lons, '//app/amedvedev/scripts/data/graphs')
