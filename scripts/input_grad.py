@@ -44,8 +44,9 @@ num_batches = len(dataset_test)  # Total number of batches in the dataset
 # Set model to evaluation mode
 model.eval()
 
+print(len(dataset_test))
 # Initialize tqdm with the total number of iterations
-pbar = tqdm(total=len(dataset_test), desc='Processing batches', unit='batch')
+pbar = tqdm(total=len(dataset_test), desc='Processing images', unit='image')
 
 dataset_iter = iter(dataset_test)  # Create an iterator from the dataset
 
@@ -66,24 +67,16 @@ for _ in range(len(dataset_test)):
     # Forward pass
     output = model(data)
 
-    #loss = loss_fn(output, y.view(-1, 1))
-
-    # Backward pass
-    #model.zero_grad()  # Clear existing gradients
-    #loss.backward()
-
-    y_grads = torch.autograd.grad(outputs=output, 
-                                inputs=data, 
-                                grad_outputs=torch.ones(output.size()).to(device), 
-                                create_graph=True, 
-                                retain_graph=True)[0]
+    y_grads = torch.autograd.grad(output, inputs=data, create_graph=False)[0]
 
     # Accumulate gradients with respect to the input for y
+
     if total_y_gradients is None:
         total_y_gradients = y_grads.clone().detach().sum(dim=0)
     else:
         total_y_gradients += y_grads.clone().detach().sum(dim=0)
 
+    model.zero_grad()
 
     pbar.update(1)  # manually update the progress bar
 
@@ -144,13 +137,36 @@ def visualize_data( input_y_array, lats, lons, output_path):
         ax.text(0.05, 0.95, f"{channel + 1}", transform=ax.transAxes, fontsize=14, va='top', ha='left', color='black', weight='bold', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round4'))
 
 
-
     plt.tight_layout()
     plt.savefig(f'{output_path}/y_gradients_combined.png', bbox_inches='tight', pad_inches=0.5)
     plt.close()
 
 
-    # You can also add visualization for the summed y gradients like you did above
+    fig, axs = plt.subplots(6, 3, figsize=(15, 20), dpi=200)
+    fig.subplots_adjust(hspace=0.5, wspace=0.3)
+    h = [1.5, 3.8, 6.5, 9.8, 2262, 3138]
+    names = ['u', 'sin(phi)', 'cos(phi)']
+
+    for channel in range(input_y_array.shape[0]):
+        ax = axs[channel // 3, channel % 3]
+        name = names[channel % 3] + ' на глубине ' + str(h[channel // 3]) + ' м'
+        ax.set_title(name)
+        
+        data = input_y_array[channel].flatten()
+        
+        ax.hist(data, bins=50, color='blue', alpha=0.7)
+        ax.set_xlabel('Gradient Value')
+        ax.set_ylabel('Frequency')
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+        
+        ax.text(0.05, 0.95, f"{channel + 1}", transform=ax.transAxes, fontsize=14, va='top', ha='left', color='black', weight='bold', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round4'))
+        
+
+
+    plt.tight_layout()
+    plt.savefig(f'{output_path}/y_gradients_histograms.png', bbox_inches='tight', pad_inches=0.5)
+    plt.close()
+
     #all_y_grads = (np.sum(reshaped_y_gradients, axis=0) - np.sum(reshaped_y_gradients, axis=0).min()) / (np.sum(reshaped_y_gradients, axis=0).max() - np.sum(reshaped_y_gradients, axis=0).min())
     
 

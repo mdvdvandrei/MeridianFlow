@@ -126,16 +126,16 @@ def threaded_cuda_batches(tokill, cuda_batches_queue, batches_queue):
     None
     """
     while tokill() == False:
-        (img, landmarks) = batches_queue.get(block=True)
+        (img, flow) = batches_queue.get(block=True)
         img = torch.from_numpy(img).float()
         img = img.type(torch.float32)
 
-        normalized_landmarks = (landmarks - mean) / std
+        normalized_flow = (flow - mean) / std
 
-        normalized_landmarks = torch.from_numpy(normalized_landmarks)
+        normalized_flow = torch.from_numpy(normalized_flow)
         img = Variable(img.float()).to(device1)
-        landmarks = Variable(normalized_landmarks.float()).to(device1)
-        cuda_batches_queue.put((img, landmarks), block=True)
+        flow = Variable(normalized_flow.float()).to(device1)
+        cuda_batches_queue.put((img, flow), block=True)
 
         if tokill() == True:
             return

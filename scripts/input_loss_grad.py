@@ -123,6 +123,9 @@ def visualize_data(input_array, input_y_array, lats, lons, output_path):
     fig.subplots_adjust(hspace=0.5, wspace=0.3)
     h = [1.5, 3.8, 6.5, 9.8, 2262, 3138]
     names = ['u', 'sin(phi)', 'cos(phi)']
+
+    d_list = []
+
     for channel in range(input_y_array.shape[0]):
         ax = axs[channel // 3, channel % 3]
         name = names[channel % 3] + ' на глубине ' + str(h[channel // 3]) + ' м'
@@ -134,23 +137,25 @@ def visualize_data(input_array, input_y_array, lats, lons, output_path):
         m.fillcontinents(color='tan')
 
 
-        m.drawparallels(np.arange(-80., 81., 10.), labels=[0,0,0,0], fontsize=10)
-        m.drawmeridians(np.arange(-180., 181., 30.), labels=[0,0,0,0], fontsize=10)
+        m.drawparallels(np.arange(-80., 81., 10.), labels=[0,0,1,0], fontsize=10)
+        m.drawmeridians(np.arange(-180., 181., 30.), labels=[0,0,1,0], fontsize=10)
 
         x, y = m(lons, lats)
         data = input_y_array[channel]
+
+        d_list.append(np.max(np.abs(data)))
 
         c = m.contourf(x, y, data, cmap="RdBu_r")
         ax.text(0.05, 0.95, f"{channel + 1}", transform=ax.transAxes, fontsize=14, va='top', ha='left', color='black', weight='bold', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round4'))
 
 
-
     plt.tight_layout()
     plt.savefig(f'{output_path}/gradients_image_combined.png', bbox_inches='tight', pad_inches=0.5)
     plt.close()
-
-    #all_y_grads = (np.sum(reshaped_y_gradients, axis=0) - np.sum(reshaped_y_gradients, axis=0).min()) / (np.sum(reshaped_y_gradients, axis=0).max() - np.sum(reshaped_y_gradients, axis=0).min())
     
+    fig_bar, ax_bar = plt.subplots(figsize=(5, 4))
+    ars = ax_bar.bar(range(18),d_list, color='gray', edgecolor='black' )
+    fig_bar.savefig(f'{output_path}/gradients_d_bar.png')
 
     all_y_grads =  np.sum(input_y_array, axis=0)
     fig, ax = plt.subplots(figsize=(10, 8), dpi=200)
@@ -162,6 +167,8 @@ def visualize_data(input_array, input_y_array, lats, lons, output_path):
     data = all_y_grads
     
     c = m.contourf(x, y, data, cmap="RdBu_r")
+
+
     
     plt.savefig(f'{output_path}/gradients_image_normalized_sum.png', bbox_inches='tight', pad_inches=0)  # Save the image
     plt.close()
